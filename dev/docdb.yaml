@@ -1,0 +1,481 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Create a DocumentDB cluster.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Amazon VPC Configuration
+        Parameters:
+          - AvailabilityZone1
+          - AvailabilityZone2
+      - Label:
+          default: DocumentDB Configuration
+        Parameters:
+          - DBClusterName
+          - DDBMasterUser
+          - DDBMasterPassword
+      - Label:
+          default: API Configuration
+        Parameters:
+          - APIUsername
+          - APIPassword
+      - Label:
+          default: AWS tag parameters
+        Parameters:
+          - punitag
+
+Parameters:
+  AvailabilityZone1:
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+    ConstraintDescription: Must be the name of the first availability zone.
+    Default: us-east-1a
+    Description: Enter the name of the first availability zone.
+  AvailabilityZone2:
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+    ConstraintDescription: Must be the name of the second availability zone.
+    Default: us-east-1b
+    Description: Enter the name of the second availability zone.
+  DDBMasterUser:
+    Type: String
+    ConstraintDescription: Must be a valid DocumenDB database master username.
+    Description: Select a RDS MySQL database master username.
+    Default: admdocdbcl01
+  DDBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 30
+    AllowedPattern: ^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?\d)(?=.*?[_@#$%^&+=]).*$
+    ConstraintDescription: Password must contain at least one uppercase letter, one
+      lowercase letter, one digit, and one special character (@#$%^&+=).
+  APIUsername:
+    Type: String
+    ConstraintDescription: Must be a valid DocumenDB database master username.
+    Description: Select a RDS MySQL database master username.
+    Default: APIDDBUser
+  APIPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 30
+    AllowedPattern: ^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?\d)(?=.*?[_@#$%^&+=]).*$
+    ConstraintDescription: Password must contain at least one uppercase letter, one
+      lowercase letter, one digit, and one special character (@#$%^&+=).
+  punitag:
+    Description: Specify a unique name for tag this stack resources.
+    Type: String
+    Default: apidocdb
+    AllowedPattern: '[\x20-\x7E]*'
+    ConstraintDescription: Must contain only ASCII characters
+  DBClusterName:
+    Type: String
+    Default: docdbcv2024
+    Description: Name for the DocumentDB cluster
+
+Resources:
+
+  ### VPC ### 
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref MainVPC
+
+  MainSubnetPublic:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.0.10.0/24
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  MainSubnetPrivate:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.0.100.0/24
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  SecondSubnetPrivate:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1b
+      CidrBlock: 10.0.200.0/24
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  RouteIGW:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SubnetMainPubRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MainSubnetPublic
+      RouteTableId: !Ref PublicRouteTable
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref MainSubnetPublic
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  RouteNATGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  SubnetMainPrivRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MainSubnetPrivate
+      RouteTableId: !Ref PrivateRouteTable
+
+  SubnetSecondPrivRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SecondSubnetPrivate
+      RouteTableId: !Ref PrivateRouteTable
+
+  ### DocumentDB ###
+  DocumentDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DocumentDB Security Group
+      VpcId: !Ref MainVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  DocumentDBSubnetGroup:
+    Type: AWS::DocDB::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DocumentDB Subnet Group
+      SubnetIds:
+        - !Ref MainSubnetPrivate
+        - !Ref SecondSubnetPrivate
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  DocumentDBCluster:
+    Type: AWS::DocDB::DBCluster
+    Properties:
+      DBClusterIdentifier: docdbcv2024
+      MasterUsername: !Ref DDBMasterUser
+      MasterUserPassword: !Ref DDBMasterPassword
+      Port: 27017
+      StorageEncrypted: true
+      EngineVersion: 5.0.0
+      AvailabilityZones:
+        - us-east-1a
+        - us-east-1b
+      VpcSecurityGroupIds:
+        - !Ref DocumentDBSecurityGroup
+      DBSubnetGroupName: !Ref DocumentDBSubnetGroup
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  DocumentDBInstance1:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DocumentDBCluster
+      DBInstanceClass: db.t3.medium
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+  DocumentDBInstance2:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DocumentDBCluster
+      DBInstanceClass: db.t3.medium
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  # Secret Manager
+  DocDBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${punitag}-DocDBSecret
+      Description: This secret has the credentials for the DocumentDB cluster
+      SecretString: !Sub '{"username": "${DDBMasterUser}","password":
+        "${DDBMasterPassword}"}, "ssl": true}'
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  SecretDocDBClusterAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref DocDBSecret
+      TargetId: !Ref DocumentDBCluster
+      TargetType: AWS::DocDB::DBCluster
+    DependsOn: DocumentDBCluster
+
+  # IAM
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+      Policies:
+        - PolicyName: DocumentDBSecret
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref DocDBSecret
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+      RoleName: !Sub ${punitag}-Role-Lambda
+
+  # Lambda
+
+  LambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Content:
+        S3Bucket: layers-aws-api-documentdb
+        S3Key: lambda_layer.zip
+      CompatibleRuntimes:
+        - python3.11
+      Description: Lambda layer for DocumentDB dependencies and PEM file
+      LayerName: !Sub ${punitag}-LambdaLayer
+      LicenseInfo: MIT
+
+  LambdaAPPFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${punitag}-LambdaAPP
+      Description: Lambda function to retrieve DocumentDB credentials
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Layers:
+        - !Ref LambdaLayer
+      Code:
+        S3Bucket: functions-aws-api-documentdb
+        S3Key: app.zip
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          DB_SECRET_NAME: !Sub ${punitag}-DocDBSecret
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref DocumentDBSecurityGroup
+        SubnetIds:
+          - !Ref MainSubnetPrivate
+          - !Ref SecondSubnetPrivate
+      Timeout: 30
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  LambdaAuthFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${punitag}-LambdaAuth
+      Description: Lambda function to handle authentication
+      Handler: auth.lambda_handler
+      Runtime: python3.11
+      Code:
+        S3Bucket: functions-aws-api-documentdb
+        S3Key: auth.zip
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          USERNAME: !Ref APIUsername
+          PASSWORD: !Ref APIPassword
+      Timeout: 30
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  LambdaPermissionAPP:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaAPPFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGatewayRestAPI}/*/*
+
+  LambdaPermissionAuth:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaAuthFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGatewayRestAPI}/*/*
+
+  # API Gateway
+  APIGatewayRestAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${punitag}-API
+      Description: An API to perform CRUD operations on a DocumentDB cluster
+      ApiKeySourceType: HEADER
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Tags:
+        - Key: Name
+          Value: !Ref punitag
+
+  APIGatewayResourcedocdb:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      ParentId: !GetAtt APIGatewayRestAPI.RootResourceId
+      PathPart: docdb
+  APIGatewayResourcedb:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      ParentId: !GetAtt APIGatewayResourcedocdb.ResourceId
+      PathPart: '{general_db}'
+  APIGatewayResourcecollection:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      ParentId: !GetAtt APIGatewayResourcedb.ResourceId
+      PathPart: '{general_collection}'
+
+  APIGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      StageName: v1
+    DependsOn:
+      - APIGatewayMethodANYAuth
+
+  APIGatewayAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      Name: !Sub ${punitag}-Authorizer
+      Type: REQUEST
+      IdentitySource: method.request.header.Authorization
+      AuthorizerUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthFunction.Arn}/invocations
+      AuthorizerResultTtlInSeconds: 300
+
+  APIGatewayModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      Name: Emptyresponse
+      ContentType: application/json
+      Schema:
+        title: Empty Schema
+        type: object
+
+  APIGatewayMethodANYAuth:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref APIGatewayRestAPI
+      ResourceId: !Ref APIGatewayResourcecollection
+      HttpMethod: ANY
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref APIGatewayAuthorizer
+      RequestParameters:
+        method.request.path.general_db: true
+        method.request.path.general_collection: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAPPFunction.Arn}/invocations
+        PassthroughBehavior: WHEN_NO_MATCH
+        ContentHandling: CONVERT_TO_TEXT
+        IntegrationResponses:
+        - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: !Ref APIGatewayModel
+
+  APIGatewayResponses1:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      StatusCode: 401
+      RestApiId: !Ref APIGatewayRestAPI
+      ResponseType: UNAUTHORIZED
+      ResponseParameters:
+        gatewayresponse.header.WWW-Authenticate: '''Basic'''
+      ResponseTemplates:
+        application/json: '{"message":$context.error.messageString}'
+
+### Outputs ###
+Outputs:
+  ClusterEndpoint:
+    Value: !GetAtt DocumentDBCluster.Endpoint
+  APIGatewayRestAPIEndpoint:
+    Value: !Sub ${APIGatewayRestAPI}.execute-api.${AWS::Region}.amazonaws.com/v1
