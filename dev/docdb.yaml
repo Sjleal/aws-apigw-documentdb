@@ -257,7 +257,7 @@ Resources:
       Name: !Sub ${punitag}-DocDBSecret
       Description: This secret has the credentials for the DocumentDB cluster
       SecretString: !Sub '{"username": "${DDBMasterUser}","password":
-        "${DDBMasterPassword}"}, "ssl": true}'
+        "${DDBMasterPassword}"}, "ssl": true'
       Tags:
         - Key: Name
           Value: !Ref punitag
