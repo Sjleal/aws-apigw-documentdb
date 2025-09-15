@@ -1,4 +1,4 @@
-# Using AWS Cloudformation to automate the setup of API Gateway and DocuemntDB Resources
+# Using AWS Cloudformation to automate the setup of API Gateway and DocumentDb Resources
 ## Overview
 
 The REST API in this project can perform operations of insert update, delete and read against a collection of an Amazon DocumentDB resource. This design includes the creation of resources in AWS, like an Amazon DocumentDB, AWS Lambda functions and an AWS API Gateway, all of this  will be deployed through a templete in AWS CloudFormation. 
@@ -93,7 +93,7 @@ You can register a domain name on [Amazon Route 53](https://docs.aws.amazon.com/
 
 >**CloudFormation Template:**<br>
 The resources will be created using AWS Cloudformation in order to maintain infrastructure integrity, reduce errors, and track changes over time. Taking advantage of Cloudformation's ability to automate resource deployment, a template will be designed to handle the creation and configuration of the resources involved in the solution.<br>
-In the following steps, part of the code used in each section will be shown, the complete template is available in a public repository called [apigw-docuemntdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).<br>
+In the following steps, part of the code used in each section will be shown, the complete template is available in a public repository called [apigw-documentdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).<br>
 Some inputs will be requested at the stack creation and others will be captured during template execution. The YAML format was chosen for this template.
 
 
@@ -541,7 +541,7 @@ As you can see, no access policy has been applied to these buckets because this 
 
 **9. Creating the stack with Cloudformation**
 
-Once we have finished designing the template for our stack, it is time to build it. As I mentioned before, the complete template is available in a public repository on GitHub called [apigw-docuemntdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).
+Once we have finished designing the template for our stack, it is time to build it. As I mentioned before, the complete template is available in a public repository on GitHub called [apigw-documentdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).
 
 You can use a tool named [Application Composer](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/app-composer-for-cloudformation.html) in CloudFormation console mode to validate your template and also you can drag, drop, configure, and connect a variety of resources onto a visual canvas. The following image shows the resources involved in the template and a canvas representation of them.
 
