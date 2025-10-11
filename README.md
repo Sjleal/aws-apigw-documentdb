@@ -1,4 +1,4 @@
-# Using AWS Cloudformation to automate the setup of API Gateway and DocuemntDB Resources
+# Using AWS Cloudformation to automate the setup of API Gateway and DocumentDB Resources
 ## Overview
 
 This project represents a first exploration into serverless design, demonstrating how AWS services can be orchestrated to create a scalable, secure, and maintenance-free architecture.
@@ -129,7 +129,7 @@ This modular and automated setup ensures consistency, reusability, and secure de
 
 >**CloudFormation Template:**<br>
 The resources will be created using AWS Cloudformation in order to maintain infrastructure integrity, reduce errors, and track changes over time. Taking advantage of Cloudformation's ability to automate resource deployment, a template will be designed to handle the creation and configuration of the resources involved in the solution.<br>
-In the following steps, part of the code used in each section will be shown, the complete template is available in a public repository called [apigw-docuemntdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).<br>
+In the following steps, part of the code used in each section will be shown, the complete template is available in a public repository called [apigw-DocumentDB](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).<br>
 Some inputs will be requested at the stack creation and others will be captured during template execution. The YAML format was chosen for this template.
 
 
@@ -141,7 +141,7 @@ From a design perspective, the VPC establishes the network segmentation that sep
 - __Private Subnets__ contain sensitive resources such as the Amazon DocumentDB cluster and the Lambda functions (when configured for VPC access). These resources do not have direct exposure to the internet, ensuring data confidentiality and protection.
 - __Route Tables__ define traffic flow between subnets and external networks, with separate configurations for public and private subnets to maintain network isolation.
 - __NAT Gateway__ enables instances or functions in private subnets to securely reach external services (for example, to download dependencies or communicate with AWS endpoints) without being directly exposed.
-- __VPC Security Groups__ and Network ACLs act as virtual firewalls that control inbound and outbound traffic, enforcing the principle of least privilege at the network layer.
+- __VPC Security Groups and Network ACLs__ act as virtual firewalls that control inbound and outbound traffic, enforcing the principle of least privilege at the network layer.
 
 For this project’s Proof of Concept (PoC), a single NAT Gateway was deployed in one Availability Zone to reduce costs, while still maintaining functional connectivity for private resources. In a production-grade, highly available design, a separate NAT Gateway would be deployed in each AZ to eliminate single points of failure and provide true fault tolerance.
 
@@ -641,7 +641,7 @@ Resources:
 
 **9. Creating the stack with Cloudformation**
 
-Once we have finished designing the template for our stack, it is time to build it. As I mentioned before, the complete template is available in a public repository on GitHub called [apigw-docuemntdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).
+Once we have finished designing the template for our stack, it is time to build it. As I mentioned before, the complete template is available in a public repository on GitHub called [apigw-documentdb](https://github.com/Sjleal/aws-apigw-documentdb/blob/main/dev/docdb.yaml).
 
 You can use a tool named [Application Composer](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/app-composer-for-cloudformation.html) in CloudFormation console mode to validate your template and also you can drag, drop, configure, and connect a variety of resources onto a visual canvas. The following image shows the resources involved in the template and a canvas representation of them.
 
@@ -653,12 +653,12 @@ To [create the stack](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserG
 2. Choose Create Stack to start the Create Stack wizard.
 3. __Selecting a stack template.__ On the Specify template page, choose Upload a template file to select the CloudFormation template designed.
 4. __Specifying stack parameters.__ On the Specify stack details page, type a stack name in the Stack name box. In the Parameters section, specify parameters requiered:
-  - AvailabilityZone1 / AvailabilityZone2 – Define the two Availability Zones where public and private subnets will be deployed to provide high availability.
-  - DBClusterName – The logical name assigned to the Amazon DocumentDB cluster.
-  - DDBMasterUser – The master username for the DocumentDB cluster.
-  - DDBMasterPassword – The corresponding master password for the DocumentDB cluster (stored securely in AWS Secrets Manager after creation).
-  - APIUsername / APIPassword – The credentials used by the Authentication Lambda to validate incoming API requests.
-  - TagName – A custom tag applied to all resources in the stack for easy identification and management.
+     - AvailabilityZone1 / AvailabilityZone2 – Define the two Availability Zones where public and private subnets will be deployed to provide high availability.
+     - DBClusterName – The logical name assigned to the Amazon DocumentDB cluster.
+     - DDBMasterUser – The master username for the DocumentDB cluster.
+     - DDBMasterPassword – The corresponding master password for the DocumentDB cluster (stored securely in AWS Secrets Manager after creation).
+     - APIUsername / APIPassword – The credentials used by the Authentication Lambda to validate incoming API requests.
+     - TagName – A custom tag applied to all resources in the stack for easy identification and management.
 5. __Setting AWS CloudFormation stack options.__ On _Permissions - optional_, select a role that allow to this stack create, update or delete the resources involved, __IMPORTANT:__ you can create this role on IAM console but remember using the least privilege principle. In _Stack failure options_ you can set the stack behavior in case of provisioning failure.
 6. __Reviewing your stack.__ Here You can review the selected options and press Submmit button to start the creation process.
 
