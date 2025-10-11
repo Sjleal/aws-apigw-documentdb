@@ -40,7 +40,7 @@ Parameters:
   DDBMasterUser:
     Type: String
     ConstraintDescription: Must be a valid DocumenDB database master username.
-    Description: Select a RDS MySQL database master username.
+    Description: Select a DocumentDB database master username.
     Default: admdocdbcl01
   DDBMasterPassword:
     Type: String
@@ -52,8 +52,8 @@ Parameters:
       lowercase letter, one digit, and one special character (@#$%^&+=).
   APIUsername:
     Type: String
-    ConstraintDescription: Must be a valid DocumenDB database master username.
-    Description: Select a RDS MySQL database master username.
+    ConstraintDescription: Must be a valid API username.
+    Description: Select an API username.
     Default: APIDDBUser
   APIPassword:
     Type: String
@@ -102,7 +102,7 @@ Resources:
   MainSubnetPublic:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: 10.0.10.0/24
       VpcId: !Ref MainVPC
       Tags:
@@ -111,7 +111,7 @@ Resources:
   MainSubnetPrivate:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: us-east-1a
+      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: 10.0.100.0/24
       VpcId: !Ref MainVPC
       Tags:
@@ -120,7 +120,7 @@ Resources:
   SecondSubnetPrivate:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: us-east-1b
+      AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: 10.0.200.0/24
       VpcId: !Ref MainVPC
       Tags:
@@ -217,15 +217,15 @@ Resources:
   DocumentDBCluster:
     Type: AWS::DocDB::DBCluster
     Properties:
-      DBClusterIdentifier: docdbcv2024
+      DBClusterIdentifier: !Ref DBClusterName
       MasterUsername: !Ref DDBMasterUser
       MasterUserPassword: !Ref DDBMasterPassword
       Port: 27017
       StorageEncrypted: true
       EngineVersion: 5.0.0
       AvailabilityZones:
-        - us-east-1a
-        - us-east-1b
+        - !Ref AvailabilityZone1
+        - !Ref AvailabilityZone2
       VpcSecurityGroupIds:
         - !Ref DocumentDBSecurityGroup
       DBSubnetGroupName: !Ref DocumentDBSubnetGroup
