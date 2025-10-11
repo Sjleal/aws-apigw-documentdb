@@ -758,11 +758,8 @@ By combining Infrastructure as Code (IaC), serverless computing, and managed ser
 The use of AWS CloudFormation automated the deployment of every component — from the VPC and security groups to API Gateway, Lambda functions, IAM roles, Secrets Manager, and the Amazon DocumentDB cluster, ensuring a repeatable and consistent environment.
 
 Adopting a serverless approach eliminated the need to manage infrastructure directly, reducing complexity and allowing the focus to remain on functionality and business logic. The architecture also reflects key principles of:
-
 - __High Availability (HA)__ through multi-AZ distribution and scalable compute.
-
 - __Security__ via IAM roles, private networking, and encrypted credentials in Secrets Manager.
-
 - __Cost Optimization__ using managed and event-driven services that scale with demand.
 
 Beyond its technical robustness, this demonstration served as a hands-on learning experience, reinforcing essential AWS concepts such as Serverless, IaC, HA, Managed Services, and Security by Design. It illustrates how these concepts converge to build cloud-native architectures that are scalable, reliable, and easy to maintain — key pillars for any modern cloud solution.
